@@ -127,6 +127,7 @@ class CubeSTM:
                   show_atoms: list = None,
                   atoms_size: float = 1,
                   atoms_edge: float = 2,
+                  cmap = None,
                   show_cbar: bool = False):
         """This function makes a plot of the simulated STM image based on cell sizes.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
@@ -145,6 +146,7 @@ class CubeSTM:
             show_atoms (list, optional): species of atoms to show, e.g. ['C', 'N']. Defaults to None.
             atoms_size (float, optional): size of the atoms. Defaults to 1.
             atoms_edge (float, optional): size of the edges of the atoms. Defaults to 1.
+            cmap: colormap of the figure. Defaults to navy-white colormap.
             show_cbar (boolean, optional): whether to show the color bar. Defaults to False.
         """
         
@@ -167,8 +169,10 @@ class CubeSTM:
         Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
         Z = np.block(self._make_supercell(Z, supercell))
         
-        # customize this in the future
-        colormap = colors.LinearSegmentedColormap.from_list("custom", ["navy", "white"])
+        if cmap:
+            colormap = cmap
+        else:
+            colormap = colors.LinearSegmentedColormap.from_list("custom", ["navy", "white"])
         
         fig, ax = plt.subplots(dpi=CubeSTM.fig_dpi)
         
@@ -222,7 +226,8 @@ class CubeSTM:
                   show_atoms: list = None,
                   inset_size: float = 0.35,
                   atoms_size: float = 1.,
-                  atoms_edge: float = 1.):
+                  atoms_edge: float = 1.,
+                  cmap = None):
         """This function makes a canvas plot of the simulated STM image.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
 
@@ -240,6 +245,7 @@ class CubeSTM:
             inset_size (float, optional): size of the inset to show the atoms. Defaults to 0.35.
             atoms_size (float, optional): size of the atoms. Defaults to 1.
             atoms_edge (float, optional): size of the edges of the atoms. Defaults to 1.
+            cmap: colormap of the figure. Defaults to navy-white colormap.
         """
         
         if cnorm.lower() == 'log':
@@ -281,8 +287,10 @@ class CubeSTM:
         Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
         Z = np.block(self._make_supercell(Z, supercell))
         
-        # customize this in the future
-        colormap = colors.LinearSegmentedColormap.from_list("custom", ["navy", "white"])
+        if cmap:
+            colormap = cmap
+        else:
+            colormap = colors.LinearSegmentedColormap.from_list("custom", ["navy", "white"])
         
         fig, ax = plt.subplots(dpi=CubeSTM.fig_dpi)
         mesh = ax.pcolormesh(X, Y, Z, 

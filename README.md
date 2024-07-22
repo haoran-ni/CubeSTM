@@ -27,26 +27,24 @@ The execution of CubeSTM is straightforward:
 1. Import the class
 ```python
 from cubestm import CubeSTM
-from os.path import join
 ```
 2. Read files and create instance
 ```python
-dir = './data'
-cube_path = join(dir, 'cube_001_stm_01.cube')
-geo_path = join(dir, 'geometry.in')
+cube_path = './data/cube_001_stm_01.cube'
+geo_path = './data/geometry.in'
 instance = CubeSTM(cube_path, geo_path)
 ```
 3. Make the plot
 ```python
 instance.plot(show_atoms=['C','N'],
-		     z_decay=1.6,
-		     neighbourhood=4,
-		     xy_decay=1.5,
-		     vmin=1e-4,
-		     vmax=0.4,
-		     inset_size=0.45,
-		     atoms_size=1.2,
-		     atoms_edge=1.5)
+              z_decay=1.6,
+              neighbourhood=4,
+              xy_decay=1.5,
+              vmin=1e-4,
+              vmax=0.4,
+              inset_size=0.45,
+              atoms_size=1.2,
+              atoms_edge=1.5)
 ```
 ![](./data/canvas_plot_stm.png)
 

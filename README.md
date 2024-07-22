@@ -16,9 +16,9 @@ Last but not least, in order to show the electron clouds far away from the atoms
 1. The *x* and *y* lattice vectors of the volumetric data in `.cube` file is the same as the original atomic structure. 
 
    *This is to make sure the atoms and the supercell are plotted correctly. The program still generates a plot if the lattice vectors do not match, but the supercell will not look good.*
-2. The lattice vectors are transformed to a lower triangular matrix, namely the lattice vectors should be of the form:
+2. The lattice vectors should be of the form:
    ```math
-   \begin{bmatrix} x_1 & 0 & 0 \\ y_1 & y_2 & 0 \\ 0 & 0 & z_3 \end{bmatrix}.
+   \begin{bmatrix} x_1 & x_2 & 0 \\ y_1 & y_2 & 0 \\ 0 & 0 & z_3 \end{bmatrix}.
    ```
 
 # Usage
@@ -38,7 +38,7 @@ instance = CubeSTM(cube_path, geo_path)
 ```
 3. Make the plot
 ```python
-instance.plot_canvas(show_atoms=['C','N'],
+instance.plot(show_atoms=['C','N'],
 		     z_decay=1.6,
 		     neighbourhood=4,
 		     xy_decay=1.5,
@@ -50,4 +50,4 @@ instance.plot_canvas(show_atoms=['C','N'],
 ```
 ![](./data/canvas_plot_stm.png)
 
-Note that there are no required parameters for the functions `plot_canvas()` and `plot_cell()`. However, by tunning the parameters one can create an image close to the experimental one.
+Note that there are no required parameters for the functions `plot()` and `plot_cell()`. However, by tunning the parameters one can create an image close to the experimental one.

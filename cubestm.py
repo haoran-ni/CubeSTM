@@ -120,7 +120,7 @@ class CubeSTM:
              canvas_width: float = 40,
              canvas_height: float = 35,
              rotation: float = 0,
-             neighbourhood: int = 5,
+             neighbourhood: float = 0.5,
              xy_decay: float = 1.,
              z_decay: float = 1.,
              vmin: float = 1e-3,
@@ -139,7 +139,7 @@ class CubeSTM:
             canvas_width (float, optional): size of canvas width in Angstrom. Defaults to 40.
             canvas_height (float, optional): size of canvas height in Angstrom. Defaults to 35.
             rotation (float, optional): degree of rotation. Defaults to 0.
-            neighbourhood (int, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Defaults to 5.
+            neighbourhood (float, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Unit is Angstrom. Defaults to 0.5.
             xy_decay (float, optional): strength of decay of electron density contribution in xy direction. Defaults to 1.
             z_decay (float, optional): strength of decay of electron density contribution in z direction. Defaults to 1.
             vmin (float, optional): minimum value to show in the plot. Defaults to 1e-3.
@@ -328,7 +328,7 @@ class CubeSTM:
     def plot_cell(self, 
                   height: float = 0.8,
                   supercell: list = [1,1],
-                  neighbourhood: int = 5,
+                  neighbourhood: float = 0.5,
                   xy_decay: float = 1., 
                   z_decay: float = 1.,
                   vmin: float = 1e-3, 
@@ -347,7 +347,7 @@ class CubeSTM:
         Args:
             height (float, optional): percentage height in z direction of the cube file. Defaults to 0.8.
             supercell (list, optional): the size of the supercell to plot, e.g. [2,2]. Defaults to [1,1].
-            neighbourhood (int, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Defaults to 5.
+            neighbourhood (float, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Unit is Angstrom. Defaults to 0.5.
             xy_decay (float, optional): strength of decay of electron density contribution in xy direction. Defaults to 1.
             z_decay (float, optional): strength of decay of electron density contribution in z direction. Defaults to 1.
             vmin (float, optional): minimum value to show in the plot. Defaults to 1e-3.
@@ -431,12 +431,12 @@ class CubeSTM:
         return self.origin + (self.voxel_basis * ids).sum(axis=0)
     
     
-    def _tunnel(self, height: int, neighbourhood: int, xy_decay: float, z_decay: float):
+    def _tunnel(self, height: int, neighbourhood: float, xy_decay: float, z_decay: float):
         """This function performs the summation of local electron densities scaled by their distance to the tip.
 
         Args:
             height (float): z index of the tip in the reference frame of the cube file
-            neighbourhood (int): It determines how large the xy region is where the electrons could tunnel to the tip.
+            neighbourhood (float): It determines how large the xy region is where the electrons could tunnel to the tip. Unit is Angstrom.
             xy_decay (float): The decaying factor of the electron density contribution in xy direction.
                               The larger the xy_decay, the less important the neighbouring electron densities are.
                               A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
@@ -448,15 +448,19 @@ class CubeSTM:
             np.ndarray: The integrated electron density projected along z direction.
         """
 
+        j_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[0]))
+        k_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[1]))
+        
         Z = np.zeros((self.num_voxel[0], self.num_voxel[1]))
         for i in range(height+1):
             dist_z = (height - i) * np.linalg.norm(self.voxel_basis[2])
-            for j in range(-neighbourhood, neighbourhood+1):
+            for j in range(-j_cut, j_cut+1):
                 x_shifted = np.roll(self.xyz_voxel[:, :, i], j, axis=0)
-                for k in range(-neighbourhood, neighbourhood+1):
+                for k in range(-k_cut, k_cut+1):
                     xy_shifted = np.roll(x_shifted, k, axis=1)
-                    dist_xy = np.linalg.norm(k*self.voxel_basis[1] - j*self.voxel_basis[0])
-                    Z += np.exp(-z_decay * dist_z) * np.exp(-xy_decay * dist_xy) * xy_shifted
+                    dist_xy = np.linalg.norm(k*self.voxel_basis[1] + j*self.voxel_basis[0])
+                    if dist_xy <= neighbourhood:
+                        Z += np.exp(-z_decay * dist_z) * np.exp(-xy_decay * dist_xy) * xy_shifted
                 
         Z = self._normalize_matrix(Z)
         

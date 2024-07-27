@@ -308,9 +308,9 @@ class CubeSTM:
                 atoms_x = atoms[:, 0]
                 atoms_y = atoms[:, 1]
                 atoms_z = atoms[:, 2]
-                order = np.argsort(atoms_z)
                 # plot inset
-                axins.scatter(atoms_x[order], atoms_y[order], label=f"{species.name}", color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
+                for i in range(len(atoms)):
+                    axins.scatter(atoms_x[i], atoms_y[i], zorder=atoms_z[i], color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
                 ax.scatter([],[], label=f"{species.name}", color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
             ax.legend(loc='upper left', framealpha=1., prop={'size':16}, edgecolor='black')
                 
@@ -412,9 +412,9 @@ class CubeSTM:
                 atoms_x = atoms[:, 0]
                 atoms_y = atoms[:, 1]
                 atoms_z = atoms[:, 2]
-                order = np.argsort(atoms_z)
                 # plot
-                ax.scatter(atoms_x[order], atoms_y[order], label=f"{species.name}", color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
+                for i in range(len(atoms)):
+                    ax.scatter(atoms_x[i], atoms_y[i], zorder=atoms_z[i], label=f"{species.name}" if i == 0 else None, color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
                 ax.legend(loc='best', framealpha=1., prop={'size':16}, edgecolor='black')
                 
         if show_cbar:

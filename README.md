@@ -64,6 +64,6 @@ instance.plot(show_atoms=['C','N'],
               atoms_size=1.2,
               atoms_edge=1.5)
 ```
-![](./data/canvas_plot_stm.png)
+![](./data/output.png)
 
 Note that there are no required parameters for the functions `plot()` and `plot_cell()`. However, by tunning the parameters one can create an image close to the experimental one.

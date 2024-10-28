@@ -107,7 +107,7 @@ class CubeSTM:
                         z_voxel = np.concatenate((z_voxel, voxel_line))
                     yz_voxel.append(z_voxel)
                 self.xyz_voxel.append(yz_voxel) 
-            self.xyz_voxel = np.array(self.xyz_voxel)
+            self.xyz_voxel = np.abs(np.array(self.xyz_voxel))
 
             # sanity check
             for i in range(3):

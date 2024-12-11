@@ -210,8 +210,8 @@ class CubeSTM:
         y = np.arange(self.num_voxel[1]*supercell[1])
         _X, _Y = np.meshgrid(x,y)
         rotated_basis = self._apply_rot(rotation, self.voxel_basis[:2, :2].T).T
-        X = self.origin[0] + rotated_basis[0][0] * _X + rotated_basis[1][0] * _Y
-        Y = self.origin[1] + rotated_basis[0][1] * _X + rotated_basis[1][1] * _Y
+        X = o[0] + rotated_basis[0][0] * _X + rotated_basis[1][0] * _Y
+        Y = o[1] + rotated_basis[0][1] * _X + rotated_basis[1][1] * _Y
         Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
         Z = np.block(self._make_supercell(Z, supercell))
         

@@ -374,8 +374,8 @@ class CubeSTM:
         x = np.arange(self.num_voxel[0]*supercell[0])
         y = np.arange(self.num_voxel[1]*supercell[1])
         _X, _Y = np.meshgrid(x,y)
-        X = o[0] + self.voxel_basis[0][0] * _X + self.voxel_basis[1][0] * _Y
-        Y = o[1] + self.voxel_basis[0][1] * _X + self.voxel_basis[1][1] * _Y   
+        X = self.origin[0] + self.voxel_basis[0][0] * _X + self.voxel_basis[1][0] * _Y
+        Y = self.origin[1] + self.voxel_basis[0][1] * _X + self.voxel_basis[1][1] * _Y   
         Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
         Z = np.block(self._make_supercell(Z, supercell))
         

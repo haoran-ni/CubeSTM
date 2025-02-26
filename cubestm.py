@@ -6,6 +6,7 @@ import matplotlib.colors as colors
 from matplotlib.colors import Normalize
 from matplotlib.colors import LogNorm
 import matplotlib.font_manager as fm
+from scipy.ndimage import gaussian_filter
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 
@@ -119,18 +120,27 @@ class CubeSTM:
              height: float = 0.8, 
              canvas_width: float = 40,
              canvas_height: float = 35,
-             rotation: float = 0,
-             neighbourhood: float = 0.5,
-             xy_decay: float = 1.,
-             z_decay: float = 1.,
-             vmin: float = 1e-3,
+             neighbourhood: float = 2.0,
+             xy_decay: float = 0.8,
+             z_decay: float = 0.8,
+             screening_power: float = 5.,
+             localization_power: float = 5.,
+             vmin: float = 0.1,
              vmax: float = 1.,
-             cnorm: str = 'log', 
+             rotation: float = 0,
+             sigma: float = 0.,
+             cmap = None,
+             cnorm: str = 'normal',
              show_atoms: list = None,
-             inset_size: float = 0.5,
              atoms_size: float = 1.2,
              atoms_edge: float = 1.2,
-             cmap = None):
+             inset_size: float = 0.35,
+             inset_loc: str = "upper right",
+             legend: bool = True,
+             legend_loc: str = "upper left",
+             scalebar_color: str = "white",
+             scalebar_loc: str = "lower left",
+             save_fig: str = None):
         """This function makes a canvas plot of the simulated STM image.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
 
@@ -138,18 +148,27 @@ class CubeSTM:
             height (float, optional): percentage height in z direction of the cube file. Defaults to 0.8.
             canvas_width (float, optional): size of canvas width in Angstrom. Defaults to 40.
             canvas_height (float, optional): size of canvas height in Angstrom. Defaults to 35.
-            rotation (float, optional): degree of rotation. Defaults to 0.
-            neighbourhood (float, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Unit is Angstrom. Defaults to 0.5.
-            xy_decay (float, optional): strength of decay of electron density contribution in xy direction. Defaults to 1.
-            z_decay (float, optional): strength of decay of electron density contribution in z direction. Defaults to 1.
-            vmin (float, optional): minimum value to show in the plot. Defaults to 1e-3.
+            neighbourhood (float, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Unit is Angstrom. Defaults to 2.0.
+            xy_decay (float, optional): strength of decay of electron density contribution in xy direction. Defaults to 0.8
+            z_decay (float, optional): strength of decay of electron density contribution in z direction. Defaults to 0.8
+            screening_power (float): The strength of the screening effect. A large number means strong screening.
+            localization_power (float): The strength of the localization effect. A large number means strong localization.
+            vmin (float, optional): minimum value to show in the plot. Defaults to 0.1
             vmax (float, optional): maximum value to show in the plot. Defaults to 1.
-            cnorm (str, optional): normalization scheme for the plot. Could be either 'log' or 'normal'. Defaults to 'log'.
-            show_atoms (list, optional): species of atoms to show, e.g. ['C', 'N']. Defaults to None.
-            inset_size (float, optional): size of the inset to show the atoms. Defaults to 0.35.
-            atoms_size (float, optional): size of the atoms. Defaults to 1.
-            atoms_edge (float, optional): size of the edges of the atoms. Defaults to 1.
+            rotation (float, optional): degree of rotation. Defaults to 0.
+            sigma (float, optional): strength of Gaussian blurring. Defaults to 0.
             cmap: colormap of the figure. Defaults to navy-white colormap.
+            cnorm (str, optional): normalization scheme for the color. Could be either 'log' or 'normal'. Defaults to 'normal'.
+            show_atoms (list, optional): species of atoms to show, e.g. ['C', 'N']. Defaults to None.
+            atoms_size (float, optional): size of the atoms. Defaults to 1.2
+            atoms_edge (float, optional): size of the edges of the atoms. Defaults to 1.2
+            inset_size (float, optional): size of the inset to show the atoms. Defaults to 0.35.
+            inset_loc (str, optional): location of the inset. Could be either 'upper right', 'upper left', 'lower right' or 'lower left'.
+            legend (bool, optional): whether to show the legend of atomic species. Defaults to True.
+            legend_loc (str, optional): location of the legend. Could be either 'upper right', 'upper left', 'lower right' or 'lower left'.
+            scalebar_color (str, optional): color of the scale bar. Defaults to 'white'.
+            scalebar_loc (str, optional): location of the scale bar. Could be either 'upper right', 'upper left', 'lower right' or 'lower left'.
+            save_fig (str, optional): path to save the figure. Defaults to None.
         """
         
         if cnorm.lower() == 'log':
@@ -157,8 +176,8 @@ class CubeSTM:
         elif cnorm.lower() == 'normal':
             norm = Normalize(vmin=vmin, vmax=vmax)
         else:
-            print(f"Normalization method {cnorm} not supported, defaulting to LogNorm...")
-            norm = LogNorm(vmin=vmin, vmax=vmax)
+            print(f"Normalization method {cnorm} not supported, please use either 'log' or 'normal', defaulting to Normalize...")
+            norm = Normalize(vmin=vmin, vmax=vmax)
         
         assert height > 0. and height < 1., "height must be in range (0,1)"
         height = int(height*self.num_voxel[2])
@@ -212,8 +231,9 @@ class CubeSTM:
         rotated_basis = self._apply_rot(rotation, self.voxel_basis[:2, :2].T).T
         X = o[0] + rotated_basis[0][0] * _X + rotated_basis[1][0] * _Y
         Y = o[1] + rotated_basis[0][1] * _X + rotated_basis[1][1] * _Y
-        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
+        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power)
         Z = np.block(self._make_supercell(Z, supercell))
+        Z = gaussian_filter(Z, sigma=sigma)
         
         # coordinates of the center of the plot
         x_center = (X[0,0]+X[0,-1]+X[-1,0]+X[-1,-1])/4
@@ -226,7 +246,7 @@ class CubeSTM:
             colormap = colors.LinearSegmentedColormap.from_list("custom", ["navy", "white"])
         
         # plot stm image
-        fig, ax = plt.subplots(dpi=CubeSTM.fig_dpi)
+        fig, ax = plt.subplots(dpi=CubeSTM.fig_dpi, frameon=False)
         mesh = ax.pcolormesh(X, Y, Z, 
                              shading='gouraud', 
                              cmap=colormap, 
@@ -237,16 +257,17 @@ class CubeSTM:
         ax.set_ylim(y_center - canvas_height/2, y_center + canvas_height/2)
         
         # add scale bar
-        fontprops = fm.FontProperties(size=16, weight='bold')
+        fontprops = fm.FontProperties(size=24, weight='bold')
         scalebar = AnchoredSizeBar(ax.transData,
                                 CubeSTM.scale_bar_len,
                                 CubeSTM.scale_bar_name,
-                                'lower left',
+                                scalebar_loc,
                                 pad=0.5,
-                                color='black',
+                                color=scalebar_color,
                                 frameon=False,
-                                size_vertical=0.3,
-                                fontproperties=fontprops)
+                                size_vertical=0.5,
+                                fontproperties=fontprops,
+                                label_top=True)
         ax.add_artist(scalebar)
         
         # plot atoms
@@ -264,7 +285,14 @@ class CubeSTM:
                     lattice_xy = self.lattice[:2]
                   
             # plot atoms inset
-            axins = ax.inset_axes([1-inset_size, 1-inset_size, inset_size, inset_size])
+            if inset_loc == "upper right":
+                axins = ax.inset_axes([1-inset_size, 1-inset_size, inset_size, inset_size])
+            elif inset_loc == "lower right":
+                axins = ax.inset_axes([1-inset_size, 0, inset_size, inset_size])
+            elif inset_loc == "upper left":
+                axins = ax.inset_axes([0, 1-inset_size, inset_size, inset_size])
+            elif inset_loc == "lower left":
+                axins = ax.inset_axes([0, 0, inset_size, inset_size])
             
             axins.pcolormesh(X, Y, Z,
                              shading='gouraud',
@@ -275,8 +303,20 @@ class CubeSTM:
             
             x_length = ax.get_xlim()[1]-ax.get_xlim()[0]
             y_length = ax.get_ylim()[1]-ax.get_ylim()[0]
-            inset_left = ax.get_xlim()[0] + x_length*(1-inset_size)
-            inset_bottom = ax.get_ylim()[0] + y_length*(1-inset_size)
+            
+            if inset_loc == "upper right":
+                inset_left = ax.get_xlim()[1] - x_length * inset_size
+                inset_bottom = ax.get_ylim()[1] - y_length * inset_size
+            elif inset_loc == "lower right":
+                inset_left = ax.get_xlim()[1] - x_length * inset_size
+                inset_bottom = ax.get_ylim()[0]
+            elif inset_loc == "upper left":
+                inset_left = ax.get_xlim()[0]
+                inset_bottom = ax.get_ylim()[1] - y_length * inset_size
+            elif inset_loc == "lower left":
+                inset_left = ax.get_xlim()[0]
+                inset_bottom = ax.get_ylim()[0]
+
             inset_width = x_length*inset_size
             inset_height = y_length*inset_size
             
@@ -312,16 +352,21 @@ class CubeSTM:
                 for i in range(len(atoms)):
                     axins.scatter(atoms_x[i], atoms_y[i], zorder=atoms_z[i], color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
                 ax.scatter([],[], label=f"{species.name}", color=color, s=rad, edgecolors='black', linewidths=atoms_edge)
-            ax.legend(loc='upper left', framealpha=1., prop={'size':16}, edgecolor='black')
+            if legend:
+                ax.legend(loc=legend_loc, framealpha=1., prop={'size':16}, edgecolor='black')
                 
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
+        
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
+        
         fig.tight_layout()
+        if save_fig:
+            plt.savefig(save_fig, bbox_inches='tight', pad_inches=0)
         plt.show()
     
 
@@ -331,13 +376,15 @@ class CubeSTM:
                   neighbourhood: float = 0.5,
                   xy_decay: float = 1., 
                   z_decay: float = 1.,
+                  screening_power: float = 1,
+                  localization_power: float = 1,
                   vmin: float = 1e-3, 
                   vmax: float = 1., 
-                  cnorm: str = 'log', 
                   show_atoms: list = None,
                   atoms_size: float = 1,
                   atoms_edge: float = 2,
                   cmap = None,
+                  cnorm: str = 'normal',
                   show_cbar: bool = False):
         """This function makes a plot of the simulated STM image based on cell sizes.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
@@ -350,13 +397,15 @@ class CubeSTM:
             neighbourhood (float, optional): size of the xy neighbourhood of the electron density which could contribute to the tunneling current. Unit is Angstrom. Defaults to 0.5.
             xy_decay (float, optional): strength of decay of electron density contribution in xy direction. Defaults to 1.
             z_decay (float, optional): strength of decay of electron density contribution in z direction. Defaults to 1.
+            screening_power (float): The strength of the screening effect. A large number means strong screening.
+            localization_power (float): The strength of the localization effect. A large number means strong localization.
             vmin (float, optional): minimum value to show in the plot. Defaults to 1e-3.
             vmax (float, optional): maximum value to show in the plot. Defaults to 1.
-            cnorm (str, optional): normalization scheme for the plot. Could be either 'log' or 'normal'. Defaults to 'log'.
             show_atoms (list, optional): species of atoms to show, e.g. ['C', 'N']. Defaults to None.
             atoms_size (float, optional): size of the atoms. Defaults to 1.
             atoms_edge (float, optional): size of the edges of the atoms. Defaults to 1.
             cmap: colormap of the figure. Defaults to navy-white colormap.
+            cnorm (str, optional): normalization scheme for the plot. Could be either 'log' or 'normal'. Defaults to 'normal'.
             show_cbar (boolean, optional): whether to show the color bar. Defaults to False.
         """
         
@@ -365,8 +414,8 @@ class CubeSTM:
         elif cnorm.lower() == 'normal':
             norm = Normalize(vmin=vmin, vmax=vmax)
         else:
-            print(f"Normalization method {cnorm} not supported, defaulting to LogNorm...")
-            norm = LogNorm(vmin=vmin, vmax=vmax)
+            print(f"Normalization method {cnorm} not supported, please use either 'log' or 'normal', defaulting to Normalize...")
+            norm = Normalize(vmin=vmin, vmax=vmax)
         
         assert height > 0. and height < 1., "height must be in range (0,1)"
         height = int(height*self.num_voxel[2])
@@ -376,7 +425,7 @@ class CubeSTM:
         _X, _Y = np.meshgrid(x,y)
         X = self.origin[0] + self.voxel_basis[0][0] * _X + self.voxel_basis[1][0] * _Y
         Y = self.origin[1] + self.voxel_basis[0][1] * _X + self.voxel_basis[1][1] * _Y   
-        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay)
+        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power)
         Z = np.block(self._make_supercell(Z, supercell))
         
         if cmap:
@@ -431,7 +480,13 @@ class CubeSTM:
         return self.origin + (self.voxel_basis * ids).sum(axis=0)
     
     
-    def _tunnel(self, height: int, neighbourhood: float, xy_decay: float, z_decay: float):
+    def _tunnel(self,
+                height: int,
+                neighbourhood: float,
+                xy_decay: float,
+                z_decay: float,
+                screening_power: float,
+                localization_power: float):
         """This function performs the summation of local electron densities scaled by their distance to the tip.
 
         Args:
@@ -443,6 +498,8 @@ class CubeSTM:
             z_decay (float): The decaying factor of the electron density contribution in z direction.
                              The larger the z_decay, the less important the below electron densities are.
                              A very small z_cay indicates a uniform summation of all local electron densities below the tip.
+            screening_power (float): The strength of the screening effect. A large number means strong screening.
+            localization_power (float): The strength of the localization effect. A large number means strong localization.
             
         Returns:
             np.ndarray: The integrated electron density projected along z direction.
@@ -452,15 +509,30 @@ class CubeSTM:
         k_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[1]))
         
         Z = np.zeros((self.num_voxel[0], self.num_voxel[1]))
+        max_density = np.max(self.xyz_voxel)
+        #max_z_density = np.max(np.sum(self.xyz_voxel, axis=2))
         for i in range(height+1):
-            dist_z = (height - i) * np.linalg.norm(self.voxel_basis[2])
-            for j in range(-j_cut, j_cut+1):
-                x_shifted = np.roll(self.xyz_voxel[:, :, i], j, axis=0)
-                for k in range(-k_cut, k_cut+1):
-                    xy_shifted = np.roll(x_shifted, k, axis=1)
-                    dist_xy = np.linalg.norm(k*self.voxel_basis[1] + j*self.voxel_basis[0])
-                    if dist_xy <= neighbourhood:
-                        Z += np.exp(-z_decay * dist_z) * np.exp(-xy_decay * dist_xy) * xy_shifted
+            if np.max(self.xyz_voxel[:, :, i]) == 0:
+                continue
+            else:
+                dist_z = (height - i) * np.linalg.norm(self.voxel_basis[2])
+                z_density_sum = np.sum(self.xyz_voxel[:, :, i+1:height], axis=2)
+                for j in range(-j_cut, j_cut+1):
+                    x_shifted = np.roll(self.xyz_voxel[:, :, i], j, axis=0)
+                    z_density_sum_x_shifted = np.roll(z_density_sum, j, axis=0)
+                    for k in range(-k_cut, k_cut+1):
+                        dist_xy = np.linalg.norm(k*self.voxel_basis[1] + j*self.voxel_basis[0])
+                        if dist_xy <= neighbourhood:
+                            xy_shifted = np.roll(x_shifted, k, axis=1)
+                            z_density_sum_xy_shifted = np.roll(z_density_sum_x_shifted, k, axis=1)
+                            # the higher the accumulated electron density, the larger the screening effect
+                            screening = z_density_sum_xy_shifted
+                            # the higher the local electron density, the more localized those electrons are
+                            localization = np.power(xy_shifted/max_density, localization_power)
+                            z_decay_factor = np.exp(-z_decay * dist_z)
+                            xy_decay_factor = np.exp(-xy_decay * dist_xy)
+                            density_factor = np.exp(-localization * localization_power) * np.exp(-screening * screening_power)
+                            Z += z_decay_factor * xy_decay_factor * density_factor * xy_shifted
                 
         Z = self._normalize_matrix(Z)
         
@@ -469,7 +541,10 @@ class CubeSTM:
     
     
     def _normalize_matrix(self, matrix):
-        return matrix / np.max(matrix)
+        if np.max(matrix) == 0:
+            return matrix
+        else:
+            return matrix / np.max(matrix)
 
     
     def _make_supercell(self, Z, supercell):

@@ -1,6 +1,6 @@
 # Introduction
 
-The simulated STM images are generated using CubeSTM. It adapts the Tersoff-Hamann method with *non-local tunneling*, *screening effect*, and *localization effect* to create STM images close to experimental observations. The Tersoff-Hamann method is commonly used for visualization of STM images from partial charge files, which states the tunneling current is proportional to the local density of states (LDOS) at the position of the tip, under the assumption that the potential of the STM tip is spherically symmetric. As a result, under the constant current mode, the STM topography can be interpreted as the isosurface of the LDOS. However, STM images simulated using the Tersoff-Hamann method do not always agree well with experimental observations, e.g. the edges are too sharp, and the shape of the electron densities may not agree. To address these deficiencies, we developed CubeSTM which utilizes a modified approach of the Tersoff-Hamann method. The mechanism of CubeSTM can be better understood under the constant height mode. Our considerations are:
+CubeSTM augments the Tersoff-Hamann method with *non-local tunneling*, *screening effect*, and *localization effect* to create STM images close to experimental observations. The Tersoff-Hamann method is commonly used for visualization of STM images from partial charge files, which states the tunneling current is proportional to the local density of states (LDOS) at the position of the tip, under the assumption that the potential of the STM tip is spherically symmetric. As a result, under the constant current mode, the STM topography can be interpreted as the isosurface of the LDOS. However, STM images simulated using the Tersoff-Hamann method do not always agree well with experimental observations, e.g. the edges are too sharp, and the shape of the electron densities may not agree. To address these deficiencies, we developed CubeSTM which utilizes a modified approach of the Tersoff-Hamann method. The mechanism of CubeSTM can be better understood under the constant height mode. Our considerations are:
 
 - **Non-local tunneling**: All electron densities within a confined neighbourhood near the STM tip have a probability to contribute to the tunneling current, where the probability factor takes the form
 ```math
@@ -10,7 +10,7 @@ where $r$ is the distance from a point to the position of the STM tip, and $\alp
 
 - **Screening effect**: The higher the accumulated electron densities between a point and the STM tip, the less likely that point contributes to the tunneling current. This factor is written as
 ```math
-P_{screening} = \exp{(-\beta\cdot\int\rho(\mathbf{r})d\mathbf{r})},
+P_{screening} = \exp{(-\beta\cdot\int\rho(\mathbf{r})d \mathbf{r})},
 ```
 where $\int\rho(\mathbf{r})d\mathbf{r}$ is the summation of the local electron densities from the current point to the position of the STM tip, and $\beta$ is a parameter from user inputs.
 
@@ -24,7 +24,7 @@ Please note that all mathematical forms of the above factors are chosen emperica
 
 The final expression of the tunneling current is thus
 ```math
-I(\mathbf{r}) = \int_{<r_{cut}}P_{non-local}\cdot P_{screening}\cdot P_{localization}\cdot \rho(\mathbf{r'})d\mathbf{r'},
+I(\mathbf{r}) = \int_{ < r_{cut}}P_{non-local}\cdot P_{screening}\cdot P_{localization}\cdot \rho(\mathbf{r'})d\mathbf{r'},
 ```
 where $\mathbf{r}$ is the position of the STM tip, and the integration runs over the neighbourhood whose cutoff distance $r_{cut}$ is determined by the user input.
 

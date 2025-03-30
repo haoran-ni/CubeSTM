@@ -50,22 +50,24 @@ from cubestm import CubeSTM
 ```
 2. Read files and create instance
 ```python
-cube_path = './data/cube_001_stm_01.cube'
-geo_path = './data/geometry.in'
+cube_path = './data/naph_cu_z6.cube'
+geo_path = './data/naph_cu_z6.in'
 instance = CubeSTM(cube_path, geo_path)
 ```
 3. Make the plot
 ```python
-instance.plot(show_atoms=['C','N'],
-              z_decay=1.6,
-              neighbourhood=4,
-              xy_decay=1.5,
-              vmin=1e-4,
-              vmax=0.4,
-              inset_size=0.45,
-              atoms_size=1.2,
-              atoms_edge=1.5)
+instance.plot(show_atoms=['C', 'H'],
+              canvas_height=60,
+              canvas_width=60,
+              neighbourhood=3,
+              xy_decay=0.8,
+              z_decay=1.,
+              screening_power=10,
+              localization_power=5,
+              vmin=1e-2,
+              vmax=1.0,
+              sigma=2)
 ```
 ![](./figures/output.png)
 
-Note that there are no required parameters for the functions `plot()` and `plot_cell()`. However, by tunning the parameters one can create an image close to the experimental one.
+Other tunable parameters are explained in detail at the definition of the `plot` function in the source code.

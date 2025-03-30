@@ -28,7 +28,7 @@ I(\mathbf{r}) = \int_{ < r_{cut}}P_{non-local}\cdot P_{screening}\cdot P_{locali
 ```
 where $\mathbf{r}$ is the position of the STM tip, and the integration runs over the neighbourhood whose cutoff distance $r_{cut}$ is determined by the user input.
 
-![Illustration of relative contributions of electron densities to the tunneling current under different parameters in CubeSTM. The visualized area is a cross section in the $x-z$ plane, where the STM bias voltage is applied along the $z$ direction, namely the vertical direction in this figure. (a) The Tersoff-Hamann isosurface. (b) Screening effect off, localization effect off. (c) Screening effect off, localization effect on. (d) Screening effect on, localization effect off. (e) Screening effect on, localization effect on. (f) Screening effect magnified, localization effect magnified.](./data/cubestm.png)
+![Illustration of relative contributions of electron densities to the tunneling current under different parameters in CubeSTM. The visualized area is a cross section in the $x-z$ plane, where the STM bias voltage is applied along the $z$ direction, namely the vertical direction in this figure. (a) The Tersoff-Hamann isosurface. (b) Screening effect off, localization effect off. (c) Screening effect off, localization effect on. (d) Screening effect on, localization effect off. (e) Screening effect on, localization effect on. (f) Screening effect magnified, localization effect magnified.](./figures/cubestm.png)
 
 To illustrate how CubeSTM works, we take the electron densities of an isolated water molecule as an example, as shown in the figure. Panel (a) shows the isosurface plotted using the Tersoff-Hamann method. Panel (b) shows that without the screening effect and the localization effect, most contributions to the tunneling current come from the inner-shell electrons close to the nuclei, where the electron densities are several orders higher than outer-shell electrons. In panel (c), the localization effect is applied but not the screening effect. In this case the inner-shell electrons stay confined, yet we still see contributions from electrons even below the nuclei, which is not correct. In panel (d), the screening effect is applied but not the localization effect. We see that the screening effect alone includes similar effects as the localization effect, where inner-shell electrons are confined. Both the screening effect and the localization effect are applied in panel (e), which demonstrates the contributions of the electron densities to the tunneling current in CubeSTM have a similar distribution of an isosurface, but slightly delocalized to create similar effects as observed in experimental STM images. In the last panel (f), we greatly increase the strength of both the screening effect and the localization effect, which effectively visualizes the outer-shell electron distribution.
 
@@ -66,6 +66,6 @@ instance.plot(show_atoms=['C','N'],
               atoms_size=1.2,
               atoms_edge=1.5)
 ```
-![](./data/output.png)
+![](./figures/output.png)
 
 Note that there are no required parameters for the functions `plot()` and `plot_cell()`. However, by tunning the parameters one can create an image close to the experimental one.

@@ -71,3 +71,24 @@ instance.plot(show_atoms=['C', 'H'],
 ![](./figures/output.png)
 
 Other tunable parameters are explained in detail at the definition of the `plot` function in the source code.
+
+# Citation
+If you use this package, please cite:
+
+Haoran Ni, Kevin Larkin, Wen Wen, Saeed Moayedpour, Rithwik Tom, Imanuel Bier, Derek Dardzinski, and Noa Marom.
+Structure Prediction of Organic/Inorganic Interfaces with Genarris. ChemRxiv (2026).
+DOI: 10.26434/chemrxiv.10002028/v1
+
+BibTex:
+```bibtex
+@article{Ni2026GenarrisChemRxiv,
+author = {Haoran Ni and Kevin Larkin and Wen Wen and Saeed Moayedpour and Rithwik Tom and Imanuel Bier and Derek Dardzinski and Noa Marom},
+title = {Structure Prediction of Organic/Inorganic Interfaces with Genarris},
+journal = {ChemRxiv},
+volume = {2026},
+number = {0208},
+pages = {},
+year = {2026},
+doi = {10.26434/chemrxiv.10002028/v1},
+URL = {https://chemrxiv.org/doi/abs/10.26434/chemrxiv.10002028/v1}}
+```

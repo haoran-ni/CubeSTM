@@ -1,4 +1,5 @@
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 from ase.io import read
 from mendeleev import element
 import matplotlib.pyplot as plt
@@ -140,7 +141,8 @@ class CubeSTM:
              legend_loc: str = "upper left",
              scalebar_color: str = "white",
              scalebar_loc: str = "lower left",
-             save_fig: str = None):
+             save_fig: str = None,
+             n_jobs: int = 1):
         """This function makes a canvas plot of the simulated STM image.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
 
@@ -169,6 +171,7 @@ class CubeSTM:
             scalebar_color (str, optional): color of the scale bar. Defaults to 'white'.
             scalebar_loc (str, optional): location of the scale bar. Could be either 'upper right', 'upper left', 'lower right' or 'lower left'.
             save_fig (str, optional): path to save the figure. Defaults to None.
+            n_jobs (int, optional): number of worker threads for the tunneling calculation. Defaults to 1.
         """
         
         if cnorm.lower() == 'log':
@@ -231,7 +234,7 @@ class CubeSTM:
         rotated_basis = self._apply_rot(rotation, self.voxel_basis[:2, :2].T).T
         X = o[0] + rotated_basis[0][0] * _X + rotated_basis[1][0] * _Y
         Y = o[1] + rotated_basis[0][1] * _X + rotated_basis[1][1] * _Y
-        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power)
+        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power, n_jobs=n_jobs)
         Z = np.block(self._make_supercell(Z, supercell))
         Z = gaussian_filter(Z, sigma=sigma)
         
@@ -385,7 +388,8 @@ class CubeSTM:
                   atoms_edge: float = 2,
                   cmap = None,
                   cnorm: str = 'normal',
-                  show_cbar: bool = False):
+                  show_cbar: bool = False,
+                  n_jobs: int = 1):
         """This function makes a plot of the simulated STM image based on cell sizes.
            A large neighbourhood with a strong xy_decay is close to a small neighbourhood with a weak xy_decay.
            Note that the show_atoms option in this function does not perform as good as plot_canvas.
@@ -407,6 +411,7 @@ class CubeSTM:
             cmap: colormap of the figure. Defaults to navy-white colormap.
             cnorm (str, optional): normalization scheme for the plot. Could be either 'log' or 'normal'. Defaults to 'normal'.
             show_cbar (boolean, optional): whether to show the color bar. Defaults to False.
+            n_jobs (int, optional): number of worker threads for the tunneling calculation. Defaults to 1.
         """
         
         if cnorm.lower() == 'log':
@@ -425,7 +430,7 @@ class CubeSTM:
         _X, _Y = np.meshgrid(x,y)
         X = self.origin[0] + self.voxel_basis[0][0] * _X + self.voxel_basis[1][0] * _Y
         Y = self.origin[1] + self.voxel_basis[0][1] * _X + self.voxel_basis[1][1] * _Y   
-        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power)
+        Z = self._tunnel(height, neighbourhood, xy_decay, z_decay, screening_power, localization_power, n_jobs=n_jobs)
         Z = np.block(self._make_supercell(Z, supercell))
         
         if cmap:
@@ -486,7 +491,8 @@ class CubeSTM:
                 xy_decay: float,
                 z_decay: float,
                 screening_power: float,
-                localization_power: float):
+                localization_power: float,
+                n_jobs: int = 1):
         """This function performs the summation of local electron densities scaled by their distance to the tip.
 
         Args:
@@ -500,44 +506,100 @@ class CubeSTM:
                              A very small z_cay indicates a uniform summation of all local electron densities below the tip.
             screening_power (float): The strength of the screening effect. A large number means strong screening.
             localization_power (float): The strength of the localization effect. A large number means strong localization.
+            n_jobs (int, optional): number of worker threads. Defaults to 1.
             
         Returns:
             np.ndarray: The integrated electron density projected along z direction.
         """
 
-        j_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[0]))
-        k_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[1]))
-        
-        Z = np.zeros((self.num_voxel[0], self.num_voxel[1]))
         max_density = np.max(self.xyz_voxel)
-        #max_z_density = np.max(np.sum(self.xyz_voxel, axis=2))
-        for i in range(height+1):
-            if np.max(self.xyz_voxel[:, :, i]) == 0:
-                continue
-            else:
-                dist_z = (height - i) * np.linalg.norm(self.voxel_basis[2])
-                z_density_sum = np.sum(self.xyz_voxel[:, :, i+1:height], axis=2)
-                for j in range(-j_cut, j_cut+1):
-                    x_shifted = np.roll(self.xyz_voxel[:, :, i], j, axis=0)
-                    z_density_sum_x_shifted = np.roll(z_density_sum, j, axis=0)
-                    for k in range(-k_cut, k_cut+1):
-                        dist_xy = np.linalg.norm(k*self.voxel_basis[1] + j*self.voxel_basis[0])
-                        if dist_xy <= neighbourhood:
-                            xy_shifted = np.roll(x_shifted, k, axis=1)
-                            z_density_sum_xy_shifted = np.roll(z_density_sum_x_shifted, k, axis=1)
-                            # the higher the accumulated electron density, the larger the screening effect
-                            screening = z_density_sum_xy_shifted
-                            # the higher the local electron density, the more localized those electrons are
-                            localization = np.power(xy_shifted/max_density, localization_power)
-                            z_decay_factor = np.exp(-z_decay * dist_z)
-                            xy_decay_factor = np.exp(-xy_decay * dist_xy)
-                            density_factor = np.exp(-localization * localization_power) * np.exp(-screening * screening_power)
-                            Z += z_decay_factor * xy_decay_factor * density_factor * xy_shifted
+        offset_groups = self._get_tunnel_offsets(neighbourhood, xy_decay)
+        n_jobs = int(n_jobs)
+        if n_jobs < 1:
+            raise ValueError("n_jobs must be a positive integer.")
+        
+        if n_jobs == 1 or height == 0:
+            Z = self._tunnel_chunk(range(height+1),
+                                   height,
+                                   offset_groups,
+                                   z_decay,
+                                   screening_power,
+                                   localization_power,
+                                   max_density)
+        else:
+            chunks = self._split_indices(height+1, n_jobs)
+            with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+                partials = executor.map(
+                    lambda chunk: self._tunnel_chunk(chunk,
+                                                     height,
+                                                     offset_groups,
+                                                     z_decay,
+                                                     screening_power,
+                                                     localization_power,
+                                                     max_density),
+                    chunks)
+            Z = np.zeros((self.num_voxel[0], self.num_voxel[1]))
+            for partial in partials:
+                Z += partial
                 
         Z = self._normalize_matrix(Z)
         
         # without the transpose, the dimension is wrong, and the view point is from bottom
         return Z.T
+
+
+    def _tunnel_chunk(self,
+                      z_indices,
+                      height,
+                      offset_groups,
+                      z_decay,
+                      screening_power,
+                      localization_power,
+                      max_density):
+        Z = np.zeros((self.num_voxel[0], self.num_voxel[1]))
+        z_step = np.linalg.norm(self.voxel_basis[2])
+        #max_z_density = np.max(np.sum(self.xyz_voxel, axis=2))
+        for i in z_indices:
+            density_slice = self.xyz_voxel[:, :, i]
+            if np.max(density_slice) == 0:
+                continue
+            else:
+                dist_z = (height - i) * z_step
+                z_density_sum = np.sum(self.xyz_voxel[:, :, i+1:height], axis=2)
+                z_decay_factor = np.exp(-z_decay * dist_z)
+                localization = np.power(density_slice/max_density, localization_power)
+                density_factor = np.exp(-localization * localization_power) * np.exp(-z_density_sum * screening_power)
+                density_contribution = z_decay_factor * density_factor * density_slice
+                for j, k_offsets in offset_groups:
+                    x_shifted = np.roll(density_contribution, j, axis=0)
+                    for k, xy_decay_factor in k_offsets:
+                        xy_shifted = np.roll(x_shifted, k, axis=1)
+                        Z += xy_decay_factor * xy_shifted
+        return Z
+
+
+    def _get_tunnel_offsets(self, neighbourhood, xy_decay):
+        j_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[0]))
+        k_cut = int(neighbourhood//np.linalg.norm(self.voxel_basis[1]))
+        offset_groups = []
+        for j in range(-j_cut, j_cut+1):
+            k_offsets = []
+            for k in range(-k_cut, k_cut+1):
+                dist_xy = np.linalg.norm(k*self.voxel_basis[1] + j*self.voxel_basis[0])
+                if dist_xy <= neighbourhood:
+                    k_offsets.append((k, np.exp(-xy_decay * dist_xy)))
+            if k_offsets:
+                offset_groups.append((j, k_offsets))
+        return offset_groups
+
+
+    def _split_indices(self, n_indices, n_jobs):
+        n_chunks = min(n_indices, n_jobs)
+        chunk_size = int(np.ceil(n_indices/n_chunks))
+        chunks = []
+        for start in range(0, n_indices, chunk_size):
+            chunks.append(range(start, min(start+chunk_size, n_indices)))
+        return chunks
     
     
     def _normalize_matrix(self, matrix):
